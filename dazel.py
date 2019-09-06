@@ -369,7 +369,7 @@ class DockerInstance:
         # Find the real source and output directories.
         real_directory = os.path.realpath(self.directory)
         volumes += [
-            "%s:%s" % (real_directory, real_directory),
+            "%s:%s:ro" % (real_directory, real_directory),
         ]
 
         # If the user hasn't explicitly set a DAZEL_BAZEL_USER_OUTPUT_ROOT for
