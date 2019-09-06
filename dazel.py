@@ -392,6 +392,7 @@ class DockerInstance:
 
             user_output_paths = (DEFAULT_BAZEL_USER_OUTPUT_PATHS +
                                  [os.path.basename(real_directory)])
+            user_output_paths = [""]  # just mount the root bazel cache dir
             for user_output_path in user_output_paths:
               real_user_output_path = os.path.realpath(
                   os.path.join(self.bazel_output_base,
