@@ -523,6 +523,26 @@ class DockerInstance:
             directory = os.path.dirname(directory)
         return directory
 
+    @classmethod
+    def relativize_targets(cls, raw_args):
+        rel_args = [raw_args[0]]
+        repo_dir = DockerInstance._find_workspace_directory()
+        if raw_args[0] not in ["build", "test"]:
+            return raw_args
+        for target in raw_args[1:]:
+            t = target
+            if t[:2] != "//" and t[0] != "@" and t[0] != "-":
+                t = '//'
+                t += os.path.relpath(os.getcwd(), repo_dir)
+                if target == '.':
+                    pass
+                elif target == '...':
+                    t += "/..."
+                else:
+                    t += ":" + target
+            rel_args.append(t)
+        return rel_args
+
 
 def main():
     # Read the configuration either from .dazelrc or from the environment.
@@ -538,7 +558,7 @@ def main():
             return rc
 
     # Forward the command line arguments to the container.
-    return di.send_command(sys.argv[1:])
+    return di.send_command(DockerInstance.relativize_targets(sys.argv[1:]))
 
 
 if __name__ == "__main__":
