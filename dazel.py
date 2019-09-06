@@ -543,6 +543,34 @@ class DockerInstance:
             rel_args.append(t)
         return rel_args
 
+    def make_symlinks(self):
+        # Make symlinks
+        workspace = DockerInstance._find_workspace_directory()
+        # TODO(mukerjee): "dist" should come from .bazelrc
+        symlinks = {
+            "dist/bin": "bazel-out/k8-fastbuild/bin",
+            "dist/testlogs": "bazel-out/k8-fastbuild/testlogs",
+            "dist/genfiles": "bazel-out/k8-fastbuild/bin",
+            "dist/out": "bazel-out",
+            "bazel-out": "bazel-out",
+            os.path.join("dist", os.path.basename(workspace)): "",
+        }
+
+        # TOOD(mukerjee): check that workspace_hex is set
+        cache = os.path.join(self.bazel_user_output_root,
+                             self.workspace_hex_digest,
+                             "execroot",
+                             "__main__")
+
+        for symlink, orig in symlinks.items():
+            src = os.path.join(cache, orig)
+            dst = os.path.join(workspace, symlink)
+            if not os.path.isdir(os.path.dirname(dst)):
+                os.makedirs(os.path.dirname(dst))
+            if os.path.islink(dst):
+                os.unlink(dst)
+            os.symlink(src, dst)
+
 
 def main():
     # Read the configuration either from .dazelrc or from the environment.
@@ -556,6 +584,8 @@ def main():
         rc = di.start()
         if rc:
             return rc
+
+    di.make_symlinks()
 
     # Forward the command line arguments to the container.
     return di.send_command(DockerInstance.relativize_targets(sys.argv[1:]))
