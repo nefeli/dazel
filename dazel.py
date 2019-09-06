@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import pwd
 import shutil
 import subprocess
 import sys
@@ -172,6 +173,9 @@ class DockerInstance:
         # Build or pull the relevant dazel image.
         if os.path.exists(self.dockerfile):
             rc = self._build()
+            if rc:
+                return rc
+            rc = self._build_custom()
         else:
             rc = self._pull()
             # If we have the image, don't stop everything just because we
@@ -258,6 +262,40 @@ class DockerInstance:
         command = self._with_docker_machine(command)
         return self._run_silent_command(command)
 
+    def _build_custom(self):
+        """Builds a custom image that adds UID:GID's that match the users'"""
+        uid = pwd.getpwuid(os.getuid()).pw_uid
+        gid = pwd.getpwuid(os.getuid()).pw_gid
+
+        docker_file = """
+        FROM {repository}/{image}
+        RUN ["mkdir", "-p", "{home}"]
+        RUN ["mkdir", "-p", "{cache}"]
+        RUN ["mkdir", "-p", "/root/.cache"]
+        RUN ["groupadd", "-g", "{gid}", "bazelbuild"]
+        RUN ["useradd", "-m", "-g", "{gid}", "-d", "/root/.cache", "-N", "-u", "{uid}", "bazelbuild"]
+        RUN ["chown", "-R", "{uid}:{gid}", "{home}"]
+        RUN ["chown", "-R", "{uid}:{gid}", "{cache}/../.."]
+        RUN ["chown", "-R", "{uid}:{gid}", "/root/.cache"]
+        USER {uid}:{gid}
+        ENV HOME /root/.cache
+        ENV USER bazelbuild
+        WORKDIR {home}
+        """.format(repository=self.repository, image=self.image_name, gid=gid,
+                   uid=uid, home=DockerInstance._find_workspace_directory(),
+                   cache=self.bazel_user_output_root)
+
+        if not os.path.isdir("/tmp/dazel"):
+            os.makedirs("/tmp/dazel")
+        with open("/tmp/dazel/Dockerfile", "w") as f:
+            f.write(docker_file)
+
+        command = "%s build -q -t %s/%s-dazel -f /tmp/dazel/Dockerfile /tmp/dazel" % (
+            self.docker_command, self.repository, self.image_name)
+
+        command = self._with_docker_machine(command)
+        return self._run_silent_command(command)
+
     def _network_exists(self):
         """Checks if the network we need to use exists."""
         command = "%s network ls | grep \"\\<%s\\>\" >/dev/null 2>&1" % (
@@ -338,8 +376,18 @@ class DockerInstance:
             self.ports,
             ("--net=%s" % self.network) if self.network else "",
             ("%s/" % self.repository) if self.repository else "",
-            self.image_name,
+            self.image_name + '-dazel',
             self.run_command if self.run_command else "")
+        command = self._with_docker_machine(command)
+        rc = self._run_silent_command(command)
+        if rc:
+            return rc
+        uid = pwd.getpwuid(os.getuid()).pw_uid
+        gid = pwd.getpwuid(os.getuid()).pw_gid
+        command = "%s exec %s sudo chown -R %d:%d /root/.cache" % (
+            self.docker_command,
+            self.instance_name,
+            uid, gid)
         command = self._with_docker_machine(command)
         rc = self._run_silent_command(command)
         if rc:
