@@ -64,7 +64,7 @@ class DockerInstance:
         self.image_name = image_name
         self.run_command = run_command
         self.docker_command = docker_command
-        self.dockerfile = dockerfile
+        self.dockerfile = os.path.join(directory, dockerfile)
         self.repository = repository
         self.directory = directory
         self.command = command
