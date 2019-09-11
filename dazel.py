@@ -442,9 +442,7 @@ class DockerInstance:
         # Add the bazel user output directory if it exists, or the real bazelout
         # directory if it does.
         if self.bazel_user_output_root:
-            self.bazel_output_base = os.path.realpath(
-                os.path.join(self.bazel_user_output_root,
-                             self.workspace_hex_digest))
+            self.bazel_output_base = os.path.realpath(self.bazel_user_output_root)
 
             user_output_paths = (DEFAULT_BAZEL_USER_OUTPUT_PATHS +
                                  [os.path.basename(real_directory)])
