@@ -366,7 +366,7 @@ class DockerInstance:
         logger.info("Starting docker container '%s'..." % self.instance_name)
         command = "%s stop %s >/dev/null 2>&1 ; " % (self.docker_command, self.instance_name)
         command += "%s rm %s >/dev/null 2>&1 ; " % (self.docker_command, self.instance_name)
-        command += "%s run -id --name=%s %s %s %s %s %s %s %s%s %s" % (
+        command += "%s run --tmpfs=/tmp --tmpfs=/var --read-only -id --name=%s %s %s %s %s %s %s %s%s %s" % (
             self.docker_command,
             self.instance_name,
             "--privileged" if self.docker_run_privileged else "",
@@ -389,6 +389,13 @@ class DockerInstance:
             self.docker_command,
             self.instance_name,
             uid, gid)
+        command = self._with_docker_machine(command)
+        rc = self._run_silent_command(command)
+        if rc:
+            return rc
+        command = "%s exec %s sudo mkdir /var/run" % (
+            self.docker_command,
+            self.instance_name)
         command = self._with_docker_machine(command)
         rc = self._run_silent_command(command)
         if rc:
