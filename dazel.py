@@ -176,13 +176,16 @@ class DockerInstance:
             rc = self._build()
             if rc:
                 return rc
-            rc = self._build_custom()
         else:
             rc = self._pull()
             # If we have the image, don't stop everything just because we
             # couldn't pull.
             if rc and self._image_exists():
                 rc = 0
+        if rc:
+            return rc
+
+        rc = self._build_custom()
         if rc:
             return rc
 
