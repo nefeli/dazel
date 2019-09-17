@@ -388,7 +388,7 @@ class DockerInstance:
             return rc
         uid = pwd.getpwuid(os.getuid()).pw_uid
         gid = pwd.getpwuid(os.getuid()).pw_gid
-        command = "%s exec %s sudo chown -R %d:%d /root/.cache" % (
+        command = "%s exec -u root %s chown -R %d:%d /root/.cache" % (
             self.docker_command,
             self.instance_name,
             uid, gid)
@@ -396,7 +396,7 @@ class DockerInstance:
         rc = self._run_silent_command(command)
         if rc:
             return rc
-        command = "%s exec %s sudo mkdir /var/run" % (
+        command = "%s exec -u root %s mkdir /var/run" % (
             self.docker_command,
             self.instance_name)
         command = self._with_docker_machine(command)
