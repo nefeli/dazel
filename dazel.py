@@ -629,6 +629,16 @@ class DockerInstance:
                 os.unlink(dst)
             os.symlink(src, dst)
 
+    def run_prescripts(self, command):
+        workspace = DockerInstance._find_workspace_directory()
+        build_script = os.path.join(workspace, "tools", "bazel-update-build.sh")
+        test_script = os.path.join(workspace, "tools", "bazel-update-test.sh")
+        if command == "build" and os.path.isfile(build_script):
+            return os.WEXITSTATUS(os.system(build_script))
+        elif command == "test" and os.path.isfile(test_script):
+            return os.WEXITSTATUS(os.system(test_script))
+        return 0
+
 
 def main():
     # Read the configuration either from .dazelrc or from the environment.
@@ -644,6 +654,10 @@ def main():
             return rc
 
     di.make_symlinks()
+
+    rc = di.run_prescripts(sys.argv[1])
+    if rc:
+        return rc
 
     # Forward the command line arguments to the container.
     return di.send_command(DockerInstance.relativize_targets(sys.argv[1:]))
