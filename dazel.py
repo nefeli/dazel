@@ -612,7 +612,6 @@ class DockerInstance:
             "dist/testlogs": "bazel-out/k8-fastbuild/testlogs",
             "dist/genfiles": "bazel-out/k8-fastbuild/bin",
             "dist/out": "bazel-out",
-            "bazel-out": "bazel-out",
             os.path.join("dist", os.path.basename(workspace)): "",
         }
 
@@ -621,9 +620,13 @@ class DockerInstance:
                              self.workspace_hex_digest,
                              "execroot",
                              "__main__")
+        symlinks = {k: os.path.join(cache, v) for k, v in symlinks.items()}
 
-        for symlink, orig in symlinks.items():
-            src = os.path.join(cache, orig)
+        symlinks["dist/external"] = os.path.join(self.bazel_user_output_root,
+                                                 self.workspace_hex_digest,
+                                                 "external")
+
+        for symlink, src in symlinks.items():
             dst = os.path.join(workspace, symlink)
             if not os.path.isdir(os.path.dirname(dst)):
                 os.makedirs(os.path.dirname(dst))
